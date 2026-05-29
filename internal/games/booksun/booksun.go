@@ -35,22 +35,23 @@ const (
 )
 
 type symInfo struct {
-	token  string
+	glyph  string // single Egyptian-themed icon shown on the reels
+	name   string // label for the paytable
 	weight int
 	pay    [6]int64 // pay[k] = line-bet multiplier for k-of-a-kind (k 0..5)
 }
 
 var syms = []symInfo{
-	symTen:    {"10", 14, [6]int64{0, 0, 0, 5, 20, 100}},
-	symJack:   {"J", 13, [6]int64{0, 0, 0, 5, 20, 100}},
-	symQueen:  {"Q", 12, [6]int64{0, 0, 0, 5, 25, 100}},
-	symKing:   {"K", 11, [6]int64{0, 0, 0, 5, 30, 150}},
-	symAce:    {"A", 10, [6]int64{0, 0, 0, 5, 30, 150}},
-	symScarab: {"SCAR", 8, [6]int64{0, 0, 0, 5, 40, 400}},
-	symIdol:   {"IDOL", 7, [6]int64{0, 0, 0, 5, 40, 400}},
-	symMask:   {"MASK", 5, [6]int64{0, 0, 0, 10, 100, 500}},
-	symHero:   {"HERO", 4, [6]int64{0, 0, 2, 20, 200, 1000}},
-	book:      {"BOOK", 3, [6]int64{0, 0, 0, 0, 0, 0}},
+	symTen:    {"10", "10", 14, [6]int64{0, 0, 0, 5, 20, 100}},
+	symJack:   {"J", "J", 13, [6]int64{0, 0, 0, 5, 20, 100}},
+	symQueen:  {"Q", "Q", 12, [6]int64{0, 0, 0, 5, 25, 100}},
+	symKing:   {"K", "K", 11, [6]int64{0, 0, 0, 5, 30, 150}},
+	symAce:    {"A", "A", 10, [6]int64{0, 0, 0, 5, 30, 150}},
+	symScarab: {"✦", "SCARAB", 8, [6]int64{0, 0, 0, 5, 40, 400}},
+	symIdol:   {"▲", "PYRAMID", 7, [6]int64{0, 0, 0, 5, 40, 400}},
+	symMask:   {"♛", "PHARAOH", 5, [6]int64{0, 0, 0, 10, 100, 500}},
+	symHero:   {"☥", "EXPLORER", 4, [6]int64{0, 0, 2, 20, 200, 1000}},
+	book:      {"☉", "BOOK", 3, [6]int64{0, 0, 0, 0, 0, 0}},
 }
 
 // bookScatter pays a multiple of the TOTAL bet for k books anywhere.
@@ -310,7 +311,7 @@ func (m *Model) settle() tea.Cmd {
 func (m *Model) statusMessage(win int64, wasFree, triggered bool, books int) string {
 	switch {
 	case triggered:
-		return fmt.Sprintf("%d BOOKS — %d FREE SPINS! expanding symbol: %s", books, freeSpan, syms[m.special].token)
+		return fmt.Sprintf("%d BOOKS — %d FREE SPINS! expanding symbol: %s %s", books, freeSpan, syms[m.special].glyph, syms[m.special].name)
 	case wasFree && books >= 3:
 		return fmt.Sprintf("%d BOOKS — +%d FREE SPINS!", books, freeSpan)
 	case win > 0:
