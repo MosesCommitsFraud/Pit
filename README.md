@@ -30,6 +30,7 @@ for wins and the red card suits.
 | Game            | Highlights                                                        |
 | --------------- | ----------------------------------------------------------------- |
 | **Slots**       | 3 weighted reels with decelerating spin animation and a paytable. |
+| **Book of the Sun** | 5×3, 10 lines. The Book is wild + scatter; 3 trigger 10 free spins with a random expanding symbol. |
 | **Blackjack**   | 6-deck shoe, hit/stand/double/split, dealer stands on 17, 3:2 BJ. |
 | **Roulette**    | European single-zero wheel, animated ball, inside & outside bets. |
 | **Texas Hold'em** | Heads-up vs 3 bots: blinds, four betting streets, real showdowns. |
