@@ -90,7 +90,7 @@ func (m *Model) View() string {
 	)
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, "      ", m.viewPaytable())
-	return ui.Screen("Book of the Sun", m.bank, m.width, m.height, body, m.hints())
+	return ui.Screen("Book of Ra", m.bank, m.width, m.height, body, m.hints())
 }
 
 func (m *Model) viewPaytable() string {

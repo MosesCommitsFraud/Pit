@@ -1,6 +1,6 @@
-// Package booksun implements "Book of the Sun", a 5x3 Egyptian-themed slot in
-// the style of the classic book slots: the Book is both wild and scatter, and
-// three Books trigger ten free spins with one randomly chosen expanding symbol.
+// Package booksun implements "Book of Ra", a 5x3 Egyptian-themed slot: the Book
+// is both wild and scatter, and three Books trigger ten free spins with one
+// randomly chosen expanding symbol.
 package booksun
 
 import (
@@ -110,7 +110,7 @@ func tick() tea.Cmd {
 	return tea.Tick(45*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
-// Model is the Book of the Sun slot.
+// Model is the Book of Ra slot.
 type Model struct {
 	bank   *econ.Bankroll
 	betIdx int
@@ -136,7 +136,7 @@ type Model struct {
 	width, height int
 }
 
-// New builds a Book of the Sun model bound to the bankroll.
+// New builds a Book of Ra model bound to the bankroll.
 func New(b *econ.Bankroll, width, height int) tea.Model {
 	m := &Model{bank: b, width: width, height: height, winCells: map[[2]int]bool{}}
 	for r := 0; r < reels; r++ {
