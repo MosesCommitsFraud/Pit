@@ -11,7 +11,7 @@ import (
 const cellW = 5
 
 var (
-	colSep   = lipgloss.NewStyle().Foreground(ui.Faint).Render("│")
+	colSep   = lipgloss.NewStyle().Foreground(ui.Faint).Render("  │  ")
 	winCell  = lipgloss.NewStyle().Bold(true).Foreground(ui.Black).Background(ui.Accent)
 	bookCell = lipgloss.NewStyle().Bold(true).Foreground(ui.Accent)
 	highCell = lipgloss.NewStyle().Bold(true).Foreground(ui.Bright)
