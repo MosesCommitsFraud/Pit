@@ -17,8 +17,8 @@ const (
 	smallBlind  int64 = 10
 	bigBlind    int64 = 20
 	botStack    int64 = 1000
-	botDelay          = 650 * time.Millisecond
-	runoutDelay       = 750 * time.Millisecond
+	botDelay          = 520 * time.Millisecond
+	runoutDelay       = 620 * time.Millisecond
 )
 
 // betting streets

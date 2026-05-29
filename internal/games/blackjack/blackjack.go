@@ -197,7 +197,7 @@ func (m *Model) deal() tea.Cmd {
 	m.players[0].cards = append(m.players[0].cards, m.shoe.Deal())
 	m.dealer = append(m.dealer, m.shoe.Deal())
 	m.phase = phaseDealing
-	return tick(180 * time.Millisecond)
+	return tick(130 * time.Millisecond)
 }
 
 func (m *Model) onTick() (tea.Model, tea.Cmd) {
@@ -205,18 +205,18 @@ func (m *Model) onTick() (tea.Model, tea.Cmd) {
 	case phaseDealing:
 		m.reveal++
 		if m.reveal < 4 {
-			return m, tick(180 * time.Millisecond)
+			return m, tick(130 * time.Millisecond)
 		}
 		return m, m.afterDeal()
 	case phaseDealer:
 		// reveal hole, then draw to 17
 		if m.holeDown {
 			m.holeDown = false
-			return m, tick(450 * time.Millisecond)
+			return m, tick(360 * time.Millisecond)
 		}
 		if v, _ := handValue(m.dealer); v < 17 {
 			m.dealer = append(m.dealer, m.shoe.Deal())
-			return m, tick(450 * time.Millisecond)
+			return m, tick(360 * time.Millisecond)
 		}
 		return m, m.resolve()
 	}
@@ -257,7 +257,7 @@ func (m *Model) advance() tea.Cmd {
 		m.holeDown = false
 		return m.resolve()
 	}
-	return tick(450 * time.Millisecond)
+	return tick(360 * time.Millisecond)
 }
 
 // resolve scores every hand against the dealer and emits the net delta.

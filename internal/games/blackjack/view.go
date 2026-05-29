@@ -35,19 +35,17 @@ func (m *Model) View() string {
 
 	body := lipgloss.JoinVertical(lipgloss.Left,
 		ui.Subtle.Render("DEALER"),
-		dealer,
+		ui.Reserve(4, dealer),
 		"",
 		ui.Subtle.Render("YOU"),
-		player,
+		ui.Reserve(4, player),
 		"",
 		ui.BetSelector(m.bet()),
 		"",
-		status,
+		ui.Reserve(1, status),
 	)
 
-	center := lipgloss.Place(max(m.width, 1), max(m.height-4, 1),
-		lipgloss.Center, lipgloss.Center, ui.Panel.Render(body))
-
+	center := ui.Stage(m.width, m.height, 52, 16, body)
 	return lipgloss.JoinVertical(lipgloss.Left, header, center, m.helpLine())
 }
 
@@ -147,11 +145,4 @@ func valueLabel(cards []deck.Card, v int) string {
 		return fmt.Sprintf("soft %d", v)
 	}
 	return fmt.Sprintf("%d", v)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

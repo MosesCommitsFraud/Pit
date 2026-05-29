@@ -16,18 +16,16 @@ func (m *Model) View() string {
 	me := m.viewHuman()
 
 	body := lipgloss.JoinVertical(lipgloss.Center,
-		opp,
+		ui.Reserve(6, opp),
 		"",
-		board,
+		ui.Reserve(4, board),
 		"",
-		me,
+		ui.Reserve(4, me),
 		"",
-		m.viewStatus(),
+		ui.Reserve(2, m.viewStatus()),
 	)
 
-	center := lipgloss.Place(max(m.width, 1), max(m.height-4, 1),
-		lipgloss.Center, lipgloss.Center, ui.Panel.Render(body))
-
+	center := ui.Stage(m.width, m.height, 78, 20, body)
 	return lipgloss.JoinVertical(lipgloss.Left, header, center, m.helpLine())
 }
 
@@ -172,11 +170,4 @@ func (m *Model) helpLine() string {
 	default:
 		return ui.Help("m menu")
 	}
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

@@ -219,9 +219,9 @@ func (m *Model) spin() tea.Cmd {
 	m.result = rand.IntN(37)
 	m.phase = phaseSpin
 	m.frame = 0
-	m.stopAt = 28
+	m.stopAt = 38
 	m.outcome = ""
-	return tick(60 * time.Millisecond)
+	return tick(45 * time.Millisecond)
 }
 
 func (m *Model) advance() tea.Cmd {
@@ -236,12 +236,20 @@ func (m *Model) advance() tea.Cmd {
 		}
 		return m.settle()
 	}
-	// decelerate: step less often as we approach the stop
-	interval := 1 + m.frame/7
+	// spin fast, then ease the ball into its pocket over the final frames
+	interval := 1
+	switch remaining := m.stopAt - m.frame; {
+	case remaining <= 2:
+		interval = 5
+	case remaining <= 5:
+		interval = 3
+	case remaining <= 10:
+		interval = 2
+	}
 	if m.frame%interval == 0 {
 		m.wheelPos = (m.wheelPos + 1) % len(wheel)
 	}
-	return tick(60 * time.Millisecond)
+	return tick(45 * time.Millisecond)
 }
 
 func (m *Model) settle() tea.Cmd {

@@ -69,7 +69,7 @@ const (
 type tickMsg time.Time
 
 func tick() tea.Cmd {
-	return tea.Tick(55*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
+	return tea.Tick(40*time.Millisecond, func(t time.Time) tea.Msg { return tickMsg(t) })
 }
 
 // Model is the slots game.
@@ -150,7 +150,7 @@ func (m *Model) spin() tea.Cmd {
 		m.reels[i].result = pick()
 		m.reels[i].spinning = true
 		m.reels[i].frame = 0
-		m.reels[i].stopAt = 14 + i*7 // staggered stops
+		m.reels[i].stopAt = 20 + i*8 // staggered stops
 	}
 	return tick()
 }
@@ -170,8 +170,16 @@ func (m *Model) advance() tea.Cmd {
 			continue
 		}
 		allStopped = false
-		// deceleration: advance the visible symbol less often over time
-		interval := 1 + r.frame/6
+		// spin fast, then ease out only over the final few frames
+		interval := 1
+		switch remaining := r.stopAt - r.frame; {
+		case remaining <= 2:
+			interval = 4
+		case remaining <= 4:
+			interval = 3
+		case remaining <= 7:
+			interval = 2
+		}
 		if r.frame%interval == 0 {
 			r.display = (r.display + 1) % len(symbols)
 		}
@@ -244,22 +252,19 @@ func (m *Model) View() string {
 		}
 	}
 
-	body := lipgloss.JoinVertical(lipgloss.Center,
+	left := lipgloss.JoinVertical(lipgloss.Center,
 		window,
 		payline,
 		"",
 		ui.BetSelector(m.bet()),
 		"",
-		status,
+		ui.Reserve(1, status),
 	)
 
+	body := lipgloss.JoinHorizontal(lipgloss.Center, left, "   ", renderPaytable())
+
 	help := ui.Help("space spin · ←/→ bet · m menu")
-	paytable := renderPaytable()
-
-	center := lipgloss.Place(max(m.width, 1), max(m.height-4, 1),
-		lipgloss.Center, lipgloss.Center,
-		lipgloss.JoinHorizontal(lipgloss.Center, ui.Panel.Render(body), "  ", paytable))
-
+	center := ui.Stage(m.width, m.height, 62, 13, body)
 	return lipgloss.JoinVertical(lipgloss.Left, header, center, help)
 }
 
@@ -296,11 +301,4 @@ func itoa(n int64) string {
 		n /= 10
 	}
 	return string(bs)
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

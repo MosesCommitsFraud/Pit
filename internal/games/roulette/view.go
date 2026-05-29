@@ -65,17 +65,17 @@ func (m *Model) View() string {
 
 	chipLine := ui.Heading.Render("Chip: ") +
 		lipgloss.NewStyle().Bold(true).Foreground(ui.Gold).Render(ui.Money(m.chip())) +
-		ui.Subtle.Render("  (←/→)   ") +
-		ui.Subtle.Render("Total wagered: ") + ui.Heading.Render(ui.Money(m.totalWagered()))
+		ui.Subtle.Render("  (←/→)\n") +
+		ui.Subtle.Render("Wagered: ") + ui.Heading.Render(ui.Money(m.totalWagered()))
 
-	right := lipgloss.JoinVertical(lipgloss.Center, wheelBox, "", hist, "", status)
+	right := lipgloss.NewStyle().Width(44).Align(lipgloss.Center).Render(
+		lipgloss.JoinVertical(lipgloss.Center,
+			chipLine, "", wheelBox, "", ui.Reserve(1, hist), "", ui.Reserve(1, status)),
+	)
 
-	body := lipgloss.JoinHorizontal(lipgloss.Top, board, "    ",
-		lipgloss.JoinVertical(lipgloss.Left, chipLine, "", right))
+	body := lipgloss.JoinHorizontal(lipgloss.Top, board, "   ", right)
 
-	center := lipgloss.Place(max(m.width, 1), max(m.height-4, 1),
-		lipgloss.Center, lipgloss.Center, ui.Panel.Render(body))
-
+	center := ui.Stage(m.width, m.height, 80, 15, body)
 	return lipgloss.JoinVertical(lipgloss.Left, header, center, m.helpLine())
 }
 
@@ -99,7 +99,7 @@ func (m *Model) viewBoard() string {
 		}
 	}
 	return lipgloss.NewStyle().Border(lipgloss.NormalBorder()).
-		BorderForeground(ui.Border).Padding(0, 1).
+		BorderForeground(ui.Border).Padding(0, 1).Width(26).
 		Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
 }
 
@@ -107,8 +107,12 @@ func (m *Model) viewHistory() string {
 	if len(m.history) == 0 {
 		return ui.Subtle.Render("no spins yet")
 	}
-	cells := make([]string, 0, len(m.history))
-	for _, n := range m.history {
+	shown := m.history
+	if len(shown) > 8 {
+		shown = shown[:8]
+	}
+	cells := make([]string, 0, len(shown))
+	for _, n := range shown {
 		cells = append(cells, renderPocket(n))
 	}
 	return ui.Subtle.Render("Recent: ") + lipgloss.JoinHorizontal(lipgloss.Left, cells...)
@@ -125,11 +129,4 @@ func (m *Model) helpLine() string {
 	default:
 		return ui.Help("m menu")
 	}
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

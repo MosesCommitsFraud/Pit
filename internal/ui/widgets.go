@@ -29,6 +29,30 @@ func Header(game string, b *econ.Bankroll, width int) string {
 // Help renders a dimmed key-hint line.
 func Help(hints string) string { return HelpBar.Render(hints) }
 
+// Stage centers a content block inside a fixed-size area (contentW x contentH),
+// wraps it in the panel, and centers that panel in the space below the header.
+// Because the inner area is a constant size, changes to the content (longer bet
+// text, a status line appearing, more cards) re-center within fixed bounds
+// instead of resizing the panel — which is what eliminates layout jitter.
+func Stage(termW, termH, contentW, contentH int, body string) string {
+	block := lipgloss.Place(contentW, contentH, lipgloss.Center, lipgloss.Center, body)
+	panel := Panel.Render(block)
+	return lipgloss.Place(maxi(termW, 1), maxi(termH-4, 1),
+		lipgloss.Center, lipgloss.Center, panel)
+}
+
+// Reserve pads s to exactly h lines so optional content never shifts the layout.
+func Reserve(h int, s string) string {
+	return lipgloss.NewStyle().Height(h).Render(s)
+}
+
+func maxi(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
 // Result is the outcome of a settled wager, for the banner color.
 type Result int
 
