@@ -9,20 +9,21 @@ import (
 )
 
 func (m *Model) View() string {
-	header := ui.Header("Blackjack", m.bank, m.width)
-
-	dealer := m.viewDealer()
-	player := m.viewPlayers()
+	dealerVal := ""
+	if !m.holeDown && len(m.dealer) > 0 {
+		v, _ := handValue(m.dealer)
+		dealerVal = valueLabel(m.dealer, v)
+	}
 
 	var status string
 	switch m.phase {
 	case phaseBetting:
-		status = ui.Subtle.Render("Place your bet · enter to deal")
+		status = ui.Subtle.Render("place your bet · ENTER to deal")
 		if m.outcome != "" {
 			status = ui.LoseText.Render(m.outcome)
 		}
 	case phasePlayer:
-		status = ui.Heading.Render("Your move")
+		status = ui.AccentText.Render("YOUR MOVE")
 	case phaseResult:
 		if m.delta > 0 {
 			status = ui.Banner(ui.ResultWin, m.outcome, m.delta)
@@ -34,37 +35,36 @@ func (m *Model) View() string {
 	}
 
 	body := lipgloss.JoinVertical(lipgloss.Left,
-		ui.Subtle.Render("DEALER"),
-		ui.Reserve(4, dealer),
+		ui.SectionLabel("dealer", dealerVal),
+		ui.Reserve(1, m.viewDealer()),
 		"",
-		ui.Subtle.Render("YOU"),
-		ui.Reserve(4, player),
+		ui.SectionLabel("you", ""),
+		ui.Reserve(4, m.viewPlayers()),
 		"",
 		ui.BetSelector(m.bet()),
 		"",
 		ui.Reserve(1, status),
 	)
 
-	center := ui.Stage(m.width, m.height, 52, 16, body)
-	return lipgloss.JoinVertical(lipgloss.Left, header, center, m.helpLine())
+	return ui.Screen("Blackjack", m.bank, m.width, m.height, body, m.hints())
 }
 
-func (m *Model) helpLine() string {
+func (m *Model) hints() string {
 	switch m.phase {
 	case phasePlayer:
 		h := &m.players[m.active]
-		hints := "h hit · s stand"
+		s := "H hit · S stand"
 		if len(h.cards) == 2 {
-			hints += " · d double"
+			s += " · D double"
 			if m.canSplit(h) {
-				hints += " · p split"
+				s += " · P split"
 			}
 		}
-		return ui.Help(hints + " · m menu")
+		return s + " · M menu"
 	case phaseResult:
-		return ui.Help("enter deal again · m menu")
+		return "ENTER deal again · M menu"
 	default:
-		return ui.Help("←/→ bet · enter deal · m menu")
+		return "‹ › bet · ENTER deal · M menu"
 	}
 }
 
@@ -74,20 +74,10 @@ func (m *Model) viewDealer() string {
 	if dShown < len(cards) {
 		cards = cards[:dShown]
 	}
-	hidden := 0
-	shown := cards
 	if m.holeDown && len(cards) >= 2 {
-		// keep the first card up, hole card face-down
-		shown = cards[:1]
-		hidden = 1
+		return ui.RenderHand(cards[:1], 1)
 	}
-	row := ui.RenderHand(shown, hidden)
-	label := ""
-	if !m.holeDown && len(m.dealer) > 0 {
-		v, _ := handValue(m.dealer)
-		label = "  " + ui.Heading.Render(valueLabel(m.dealer, v))
-	}
-	return lipgloss.JoinHorizontal(lipgloss.Bottom, row, label)
+	return ui.RenderHand(cards, 0)
 }
 
 func (m *Model) viewPlayers() string {
@@ -101,19 +91,33 @@ func (m *Model) viewPlayers() string {
 		row := ui.RenderHand(cards, 0)
 		v, _ := handValue(cards)
 		tag := valueLabel(cards, v)
-		if h.bust {
-			tag = ui.LoseText.Render("BUST " + tag)
-		} else if h.doubled {
-			tag += " ×2"
+		switch {
+		case h.bust:
+			tag = ui.AccentText.Render("BUST " + tag)
+		case h.doubled:
+			tag = ui.Subtle.Render(tag + " ×2")
+		default:
+			tag = ui.Subtle.Render(tag)
 		}
-		col := lipgloss.JoinVertical(lipgloss.Left, row, ui.Subtle.Render(tag))
+		col := lipgloss.JoinVertical(lipgloss.Left, row, tag)
 		if m.phase == phasePlayer && i == m.active && len(m.players) > 1 {
 			col = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).
-				BorderForeground(ui.Gold).Padding(0, 1).Render(col)
+				BorderForeground(ui.Accent).Padding(0, 1).Render(col)
 		}
 		cols = append(cols, col)
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, cols...)
+	return lipgloss.JoinHorizontal(lipgloss.Top, joinGap(cols, "   ")...)
+}
+
+func joinGap(cols []string, gap string) []string {
+	out := make([]string, 0, len(cols)*2)
+	for i, c := range cols {
+		if i > 0 {
+			out = append(out, gap)
+		}
+		out = append(out, c)
+	}
+	return out
 }
 
 // visibleCounts returns how many player / dealer cards to show mid-deal.
@@ -139,7 +143,7 @@ func (m *Model) visibleCounts() (player, dealer int) {
 func valueLabel(cards []deck.Card, v int) string {
 	_, soft := handValue(cards)
 	if len(cards) == 2 && v == 21 {
-		return "Blackjack!"
+		return "blackjack"
 	}
 	if soft && v <= 21 {
 		return fmt.Sprintf("soft %d", v)

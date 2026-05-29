@@ -7,46 +7,47 @@ import (
 	"pit/internal/ui"
 )
 
-var (
-	redChip   = lipgloss.NewStyle().Bold(true).Foreground(ui.Cream).Background(ui.Red)
-	blackChip = lipgloss.NewStyle().Bold(true).Foreground(ui.Cream).Background(lipgloss.Color("#222"))
-	greenChip = lipgloss.NewStyle().Bold(true).Foreground(ui.Ink).Background(ui.Green)
-)
-
-func pocketStyle(n int) lipgloss.Style {
+// pocketText renders a number colored by its pocket: crimson for red, bright
+// for black, inverted for zero.
+func pocketText(n int) string {
+	st := lipgloss.NewStyle().Bold(true)
 	switch {
 	case n == 0:
-		return greenChip
+		st = st.Foreground(ui.Black).Background(ui.Bright)
 	case isRed(n):
-		return redChip
+		st = st.Foreground(ui.Accent)
 	default:
-		return blackChip
+		st = st.Foreground(ui.Bright)
 	}
+	return st.Render(fmt.Sprintf("%2d", n))
 }
 
-func renderPocket(n int) string {
-	return pocketStyle(n).Padding(0, 1).Render(fmt.Sprintf("%2d", n))
+func bigNumber(n int) string {
+	st := lipgloss.NewStyle().Bold(true)
+	switch {
+	case n == 0:
+		st = st.Foreground(ui.Black).Background(ui.Bright)
+	case isRed(n):
+		st = st.Foreground(ui.Accent)
+	default:
+		st = st.Foreground(ui.Bright)
+	}
+	inner := st.Padding(0, 2).Render(fmt.Sprintf("%2d", n))
+	return lipgloss.NewStyle().
+		Border(lipgloss.DoubleBorder()).BorderForeground(ui.Faint).
+		Padding(0, 1).Render(inner)
 }
 
 func (m *Model) View() string {
-	header := ui.Header("Roulette", m.bank, m.width)
-
-	// big landing/spinning pocket
-	current := wheel[m.wheelPos]
-	bigStyle := pocketStyle(current).Bold(true).Padding(1, 3)
-	big := bigStyle.Render(fmt.Sprintf("%d", current))
-	wheelBox := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).BorderForeground(ui.Gold).Padding(0, 1).
-		Render(big)
-
 	board := m.viewBoard()
 
-	hist := m.viewHistory()
+	chipLine := ui.Label.Render("CHIP") + "  " + ui.AccentText.Render(ui.Money(m.chip())) +
+		ui.Subtle.Render(" ‹ ›    ") + ui.Label.Render("WAGERED") + "  " + ui.Heading.Render(ui.Money(m.totalWagered()))
 
 	var status string
 	switch m.phase {
 	case phaseSpin:
-		status = ui.Subtle.Render("Spinning…")
+		status = ui.Subtle.Render("spinning…")
 	case phaseResult:
 		if m.delta > 0 {
 			status = ui.Banner(ui.ResultWin, m.outcome, m.delta)
@@ -59,74 +60,73 @@ func (m *Model) View() string {
 		if m.outcome != "" {
 			status = ui.LoseText.Render(m.outcome)
 		} else {
-			status = ui.Subtle.Render("Place chips, then SPACE to spin")
+			status = ui.Subtle.Render("place chips, then SPACE to spin")
 		}
 	}
 
-	chipLine := ui.Heading.Render("Chip: ") +
-		lipgloss.NewStyle().Bold(true).Foreground(ui.Gold).Render(ui.Money(m.chip())) +
-		ui.Subtle.Render("  (←/→)\n") +
-		ui.Subtle.Render("Wagered: ") + ui.Heading.Render(ui.Money(m.totalWagered()))
-
-	right := lipgloss.NewStyle().Width(44).Align(lipgloss.Center).Render(
-		lipgloss.JoinVertical(lipgloss.Center,
-			chipLine, "", wheelBox, "", ui.Reserve(1, hist), "", ui.Reserve(1, status)),
+	right := lipgloss.NewStyle().Width(40).Render(
+		lipgloss.JoinVertical(lipgloss.Left,
+			chipLine,
+			"",
+			bigNumber(wheel[m.wheelPos]),
+			"",
+			ui.SectionLabel("recent", ""),
+			ui.Reserve(1, m.viewHistory()),
+			"",
+			ui.Reserve(1, status),
+		),
 	)
 
-	body := lipgloss.JoinHorizontal(lipgloss.Top, board, "   ", right)
-
-	center := ui.Stage(m.width, m.height, 80, 15, body)
-	return lipgloss.JoinVertical(lipgloss.Left, header, center, m.helpLine())
+	body := lipgloss.JoinHorizontal(lipgloss.Top, board, "     ", right)
+	return ui.Screen("Roulette", m.bank, m.width, m.height, body, m.hints())
 }
 
 func (m *Model) viewBoard() string {
-	rows := []string{ui.Heading.Render("Bets")}
+	rows := []string{ui.SectionLabel("table", "")}
 	for i, t := range targets {
-		label := t.label
+		name := t.label
 		if t.kind == betStraight {
-			label = fmt.Sprintf("Straight  %s", renderPocket(m.number))
+			name = fmt.Sprintf("Straight %d", m.number)
 		}
-		payout := ui.Subtle.Render(fmt.Sprintf(" %d:1", t.payout))
 		chip := ""
 		if m.wagers[i] > 0 {
-			chip = "  " + lipgloss.NewStyle().Bold(true).Foreground(ui.Gold).Render(ui.Money(m.wagers[i]))
+			chip = "  " + ui.AccentText.Render(ui.Money(m.wagers[i]))
 		}
-		line := label + payout + chip
+		line := ui.Caps(fmt.Sprintf("%-12s %2d:1", name, t.payout)) + chip
 		if i == m.cursor {
-			rows = append(rows, ui.Selected.Render("› "+line))
+			rows = append(rows, ui.Selected.Render("▸ "+line))
 		} else {
 			rows = append(rows, ui.Unselected.Render("  "+line))
 		}
 	}
-	return lipgloss.NewStyle().Border(lipgloss.NormalBorder()).
-		BorderForeground(ui.Border).Padding(0, 1).Width(26).
-		Render(lipgloss.JoinVertical(lipgloss.Left, rows...))
+	inner := lipgloss.JoinVertical(lipgloss.Left, rows...)
+	return lipgloss.NewStyle().Width(28).Render(inner)
 }
 
 func (m *Model) viewHistory() string {
 	if len(m.history) == 0 {
-		return ui.Subtle.Render("no spins yet")
+		return ui.Subtle.Render("—")
 	}
 	shown := m.history
 	if len(shown) > 8 {
 		shown = shown[:8]
 	}
-	cells := make([]string, 0, len(shown))
-	for _, n := range shown {
-		cells = append(cells, renderPocket(n))
+	cells := make([]string, 0, len(shown)*2)
+	for i, n := range shown {
+		if i > 0 {
+			cells = append(cells, " ")
+		}
+		cells = append(cells, pocketText(n))
 	}
-	return ui.Subtle.Render("Recent: ") + lipgloss.JoinHorizontal(lipgloss.Left, cells...)
+	return lipgloss.JoinHorizontal(lipgloss.Left, cells...)
 }
 
-func (m *Model) helpLine() string {
-	switch m.phase {
-	case phaseResult, phaseBetting:
-		hints := "↑/↓ bet · ←/→ chip · enter place · backspace clear · space spin"
-		if targets[m.cursor].kind == betStraight {
-			hints = "↑/↓ bet · -/+ number · ←/→ chip · enter place · space spin"
-		}
-		return ui.Help(hints + " · m menu")
-	default:
-		return ui.Help("m menu")
+func (m *Model) hints() string {
+	if m.phase == phaseSpin {
+		return "M menu"
 	}
+	if targets[m.cursor].kind == betStraight {
+		return "↑↓ bet · −+ number · ‹ › chip · ENTER place · SPACE spin · M menu"
+	}
+	return "↑↓ bet · ‹ › chip · ENTER place · BACKSPACE clear · SPACE spin · M menu"
 }

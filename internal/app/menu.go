@@ -93,16 +93,34 @@ func (m *menu) updateGames(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m *menu) View() string {
-	logo := ui.Title.Render(banner)
-	var body string
+	title := ui.AccentText.Render("▌") + ui.Chip.Render("P I T") + ui.AccentText.Render("▐") +
+		"   " + ui.Subtle.Render(ui.Caps("terminal casino"))
+
+	var body, hints string
 	if m.stage == stageMode {
 		body = m.viewMode()
+		hints = "↑↓ move · ENTER select · CTRL+C quit"
 	} else {
 		body = m.viewGames()
+		hints = "↑↓ move · ENTER play · ESC change mode · CTRL+C quit"
 	}
-	content := lipgloss.JoinVertical(lipgloss.Left, logo, "", body)
-	return lipgloss.Place(max(m.width, 1), max(m.height, 1),
-		lipgloss.Center, lipgloss.Center, ui.Panel.Render(content))
+
+	w := m.width
+	if w < 1 {
+		w = 1
+	}
+	h := m.height - 4
+	if h < 1 {
+		h = 1
+	}
+	content := lipgloss.NewStyle().Padding(1, 2).Height(h).Render(body)
+	return lipgloss.JoinVertical(lipgloss.Left,
+		" "+title,
+		ui.Rule(w),
+		content,
+		ui.Rule(w),
+		" "+ui.HelpBar.Render(hints),
+	)
 }
 
 func (m *menu) viewMode() string {
@@ -110,44 +128,31 @@ func (m *menu) viewMode() string {
 		{"Sandbox", "Unlimited play money. For the love of the game."},
 		{"Career", "Persistent bankroll. Collect 1,000 chips every day."},
 	}
-	rows := []string{ui.Heading.Render("Choose your table"), ""}
+	rows := []string{ui.Label.Render("CHOOSE YOUR TABLE"), ""}
 	for i, md := range modes {
-		label := md.name
-		if i == m.modeIdx {
-			rows = append(rows, ui.Selected.Render("› "+label)+"  "+ui.Subtle.Render(md.blurb))
-		} else {
-			rows = append(rows, ui.Unselected.Render("  "+label)+"  "+ui.Subtle.Render(md.blurb))
-		}
+		rows = append(rows, m.row(i == m.modeIdx, md.name, md.blurb))
 	}
-	rows = append(rows, "", ui.Help("↑/↓ move · enter select · ctrl+c quit"))
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func (m *menu) viewGames() string {
-	rows := []string{}
-	head := ui.Heading.Render(m.bank.Mode().String()+" · ") +
-		lipgloss.NewStyle().Bold(true).Foreground(ui.Gold).Render(ui.Money(m.bank.Balance()))
-	rows = append(rows, head)
+	rows := []string{
+		ui.SectionLabel(m.bank.Mode().String(), ui.Money(m.bank.Balance())),
+	}
 	if m.dailyNote != "" {
-		rows = append(rows, ui.WinText.Render(m.dailyNote))
+		rows = append(rows, ui.Subtle.Render(m.dailyNote))
 	}
-	rows = append(rows, "", ui.Heading.Render("Pick a game"), "")
+	rows = append(rows, "", ui.Label.Render("SELECT A GAME"), "")
 	for i, g := range m.games {
-		if i == m.gameIdx {
-			rows = append(rows, ui.Selected.Render("› "+g.Title)+"  "+ui.Subtle.Render(g.Blurb))
-		} else {
-			rows = append(rows, ui.Unselected.Render("  "+g.Title)+"  "+ui.Subtle.Render(g.Blurb))
-		}
+		rows = append(rows, m.row(i == m.gameIdx, g.Title, g.Blurb))
 	}
-	rows = append(rows, "", ui.Help("↑/↓ move · enter play · esc change mode · ctrl+c quit"))
 	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
-const banner = "  ♠ ♥ P I T ♦ ♣\n  terminal casino"
-
-func max(a, b int) int {
-	if a > b {
-		return a
+// row renders one selectable list entry, highlighted when focused.
+func (m *menu) row(focused bool, name, blurb string) string {
+	if focused {
+		return ui.Selected.Render("▸ "+ui.Caps(name)) + "  " + ui.Subtle.Render(blurb)
 	}
-	return b
+	return ui.Unselected.Render("  "+ui.Caps(name)) + "  " + ui.Subtle.Render(blurb)
 }

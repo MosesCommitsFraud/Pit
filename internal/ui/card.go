@@ -1,76 +1,64 @@
 package ui
 
 import (
-	"strings"
+	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
 	"pit/internal/deck"
 )
 
-var cardFace = lipgloss.NewStyle().
-	Background(Cream).
-	Foreground(Ink).
-	Border(lipgloss.RoundedBorder()).
-	BorderForeground(lipgloss.Color("#cbbf9a"))
+var (
+	bracket   = lipgloss.NewStyle().Foreground(Faint)
+	blackSuit = lipgloss.NewStyle().Bold(true).Foreground(Bright)
+	redSuit   = lipgloss.NewStyle().Bold(true).Foreground(Accent)
+	rankStyle = lipgloss.NewStyle().Bold(true).Foreground(Bright)
+	backStyle = lipgloss.NewStyle().Foreground(Dim)
+)
 
-var cardBack = lipgloss.NewStyle().
-	Background(lipgloss.Color("#7a1f1f")).
-	Foreground(Gold).
-	Border(lipgloss.RoundedBorder()).
-	BorderForeground(Gold)
-
-// RenderCard draws a single face-up card as a small box.
+// RenderCard draws one face-up card as a fixed-width bracket token, e.g.
+// "[ 10♠ ]". Width is constant (7 cols) so rows of cards always align.
 func RenderCard(c deck.Card) string {
-	suit := c.Suit.Symbol()
-	rank := c.Rank.Label()
-	fg := Ink
+	rank := rankStyle.Render(fmt.Sprintf("%2s", c.Rank.Label()))
+	ss := blackSuit
 	if c.Suit.Red() {
-		fg = Red
+		ss = redSuit
 	}
-	style := cardFace.Foreground(fg)
-	// Pad the rank so the 5-wide interior aligns for "10" and single chars.
-	top := pad(rank, 5, true)
-	mid := center(suit, 5)
-	bot := pad(rank, 5, false)
-	return style.Render(top + "\n" + mid + "\n" + bot)
+	return bracket.Render("[ ") + rank + ss.Render(c.Suit.Symbol()) + bracket.Render(" ]")
 }
 
-// RenderHidden draws a face-down card.
+// RenderHidden draws a face-down card, same width as a face card.
 func RenderHidden() string {
-	return cardBack.Render("░░░░░\n░ ? ░\n░░░░░")
+	return bracket.Render("[ ") + backStyle.Render("░░░") + bracket.Render(" ]")
 }
 
-// RenderHand lays cards out left to right; hideFirst hides the hole card.
+// RenderEmpty draws an empty card slot (community placeholder).
+func RenderEmpty() string {
+	return bracket.Render("[ ") + RuleStyle.Render("   ") + bracket.Render(" ]")
+}
+
+// RenderHand lays cards out left to right; `hidden` appends face-down cards.
 func RenderHand(cards []deck.Card, hidden int) string {
-	boxes := make([]string, 0, len(cards)+hidden)
+	tokens := make([]string, 0, len(cards)+hidden)
 	for _, c := range cards {
-		boxes = append(boxes, RenderCard(c))
+		tokens = append(tokens, RenderCard(c))
 	}
 	for i := 0; i < hidden; i++ {
-		boxes = append(boxes, RenderHidden())
+		tokens = append(tokens, RenderHidden())
 	}
-	if len(boxes) == 0 {
+	if len(tokens) == 0 {
 		return ""
 	}
-	return lipgloss.JoinHorizontal(lipgloss.Top, boxes...)
+	return lipgloss.JoinHorizontal(lipgloss.Top, joinSpaced(tokens)...)
 }
 
-func pad(s string, w int, left bool) string {
-	for len(s) < w {
-		if left {
-			s = s + " "
-		} else {
-			s = " " + s
+// joinSpaced inserts a single space between tokens.
+func joinSpaced(tokens []string) []string {
+	out := make([]string, 0, len(tokens)*2)
+	for i, t := range tokens {
+		if i > 0 {
+			out = append(out, " ")
 		}
+		out = append(out, t)
 	}
-	return s
-}
-
-func center(s string, w int) string {
-	gap := w - len(s)
-	if gap <= 0 {
-		return s
-	}
-	l := gap / 2
-	return strings.Repeat(" ", l) + s + strings.Repeat(" ", gap-l)
+	return out
 }

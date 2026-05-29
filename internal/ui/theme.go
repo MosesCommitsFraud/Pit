@@ -1,43 +1,59 @@
 // Package ui holds shared styling and rendering helpers for every screen.
+//
+// The look is "retro high-contrast, mono + crimson": a near-monochrome
+// grayscale with a single crimson accent used only for wins, highlights, and
+// the red card suits. Layout is top-aligned and full-width, framed by double
+// rules, with blocky inverted title chips and uppercase labels.
 package ui
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"strings"
 
-// Palette colors used across the casino.
+	"github.com/charmbracelet/lipgloss"
+)
+
+// Palette — grayscale plus one accent.
 var (
-	Felt   = lipgloss.Color("#0b6b3a") // table green
-	Gold   = lipgloss.Color("#e8c14a") // chips / accents
-	Cream  = lipgloss.Color("#f3ead3") // primary text
-	Muted  = lipgloss.Color("#8a9a8f") // secondary text
-	Red    = lipgloss.Color("#d6453d") // losses / red suits
-	Green  = lipgloss.Color("#5fd07a") // wins
-	Ink    = lipgloss.Color("#10130f") // dark text on light cards
-	Border = lipgloss.Color("#1f7a48")
+	Accent = lipgloss.Color("#e0242f") // crimson: wins, highlights, red suits
+	Bright = lipgloss.Color("#f2f2f2") // primary text
+	Text   = lipgloss.Color("#c4c4c4") // normal text
+	Dim    = lipgloss.Color("#808080") // secondary text
+	Faint  = lipgloss.Color("#4a4a4a") // rules, placeholders
+	Black  = lipgloss.Color("#0c0c0c") // text on inverted chips
 )
 
 // Shared styles.
 var (
-	Title = lipgloss.NewStyle().Bold(true).Foreground(Gold)
+	// Chip is an inverted blocky label (bright background, dark text).
+	Chip = lipgloss.NewStyle().Bold(true).Foreground(Black).Background(Bright).Padding(0, 1)
 
-	Subtle = lipgloss.NewStyle().Foreground(Muted)
+	Title = lipgloss.NewStyle().Bold(true).Foreground(Bright)
 
-	Heading = lipgloss.NewStyle().Bold(true).Foreground(Cream)
+	Subtle = lipgloss.NewStyle().Foreground(Dim)
 
-	Selected = lipgloss.NewStyle().Bold(true).Foreground(Ink).Background(Gold).Padding(0, 1)
+	Heading = lipgloss.NewStyle().Bold(true).Foreground(Bright)
 
-	Unselected = lipgloss.NewStyle().Foreground(Cream).Padding(0, 1)
+	// Label is an uppercase section heading.
+	Label = lipgloss.NewStyle().Bold(true).Foreground(Dim)
 
-	WinText = lipgloss.NewStyle().Bold(true).Foreground(Green)
+	AccentText = lipgloss.NewStyle().Bold(true).Foreground(Accent)
 
-	LoseText = lipgloss.NewStyle().Bold(true).Foreground(Red)
+	// Selected is the inverted highlight for the focused list item.
+	Selected = lipgloss.NewStyle().Bold(true).Foreground(Black).Background(Accent).Padding(0, 1)
 
-	Panel = lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(Border).
-		Padding(1, 2)
+	Unselected = lipgloss.NewStyle().Foreground(Text).Padding(0, 1)
 
-	HelpBar = lipgloss.NewStyle().Foreground(Muted)
+	WinText = lipgloss.NewStyle().Bold(true).Foreground(Accent)
+
+	LoseText = lipgloss.NewStyle().Foreground(Dim)
+
+	RuleStyle = lipgloss.NewStyle().Foreground(Faint)
+
+	HelpBar = lipgloss.NewStyle().Foreground(Dim)
 )
+
+// Caps uppercases a string for labels/keys.
+func Caps(s string) string { return strings.ToUpper(s) }
 
 // Money formats a chip amount with thousands separators and a leading $.
 func Money(n int64) string {

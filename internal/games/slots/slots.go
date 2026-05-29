@@ -4,7 +4,6 @@ package slots
 
 import (
 	"math/rand/v2"
-	"strings"
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
@@ -23,12 +22,12 @@ type symbol struct {
 }
 
 var symbols = []symbol{
-	{"C", lipgloss.Color("#d6453d"), 9, 3},  // cherry (also pays on two)
-	{"♣", lipgloss.Color("#5fd07a"), 7, 4},  // clover
-	{"$", lipgloss.Color("#e8c14a"), 6, 6},  // cash
-	{"★", lipgloss.Color("#f3ead3"), 4, 12}, // star
-	{"♦", lipgloss.Color("#62b6ff"), 3, 25}, // diamond
-	{"7", lipgloss.Color("#ff5e8a"), 1, 75}, // jackpot
+	{"C", ui.Accent, 9, 3},  // cherry (also pays on two)
+	{"♣", ui.Bright, 7, 4},  // clover
+	{"$", ui.Bright, 6, 6},  // cash
+	{"★", ui.Text, 4, 12},   // star
+	{"♦", ui.Accent, 3, 25}, // diamond
+	{"7", ui.Accent, 1, 75}, // jackpot
 }
 
 const cherryIdx = 0
@@ -150,7 +149,7 @@ func (m *Model) spin() tea.Cmd {
 		m.reels[i].result = pick()
 		m.reels[i].spinning = true
 		m.reels[i].frame = 0
-		m.reels[i].stopAt = 20 + i*8 // staggered stops
+		m.reels[i].stopAt = 38 + i*16 // staggered stops
 	}
 	return tick()
 }
@@ -222,19 +221,13 @@ func countCherries(idx ...int) int {
 }
 
 func (m *Model) View() string {
-	header := ui.Header("Slots", m.bank, m.width)
-
-	reelCells := make([]string, 3)
-	for i := range m.reels {
-		reelCells[i] = renderCell(m.reels[i].display)
-	}
-	window := lipgloss.NewStyle().
-		Border(lipgloss.ThickBorder()).
-		BorderForeground(ui.Gold).
+	sep := ui.RuleStyle.Render(" │ ")
+	cells := []string{renderCell(m.reels[0].display), sep, renderCell(m.reels[1].display), sep, renderCell(m.reels[2].display)}
+	machine := lipgloss.NewStyle().
+		Border(lipgloss.DoubleBorder()).
+		BorderForeground(ui.Faint).
 		Padding(1, 2).
-		Render(lipgloss.JoinHorizontal(lipgloss.Center, reelCells...))
-
-	payline := ui.Subtle.Render("──── payline ────")
+		Render(lipgloss.JoinHorizontal(lipgloss.Center, cells...))
 
 	var status string
 	switch m.phase {
@@ -242,53 +235,45 @@ func (m *Model) View() string {
 		if m.lastDelta > 0 {
 			status = ui.Banner(ui.ResultWin, m.lastWin, m.lastDelta)
 		} else {
-			status = ui.Banner(ui.ResultLose, "No win", m.lastDelta)
+			status = ui.Banner(ui.ResultLose, "no win", m.lastDelta)
 		}
 	default:
 		if m.lastWin != "" {
 			status = ui.LoseText.Render(m.lastWin)
 		} else {
-			status = ui.Subtle.Render("Press SPACE to spin")
+			status = ui.Subtle.Render("SPACE to spin")
 		}
 	}
 
-	left := lipgloss.JoinVertical(lipgloss.Center,
-		window,
-		payline,
+	left := lipgloss.JoinVertical(lipgloss.Left,
+		ui.SectionLabel("reels", ""),
+		machine,
 		"",
 		ui.BetSelector(m.bet()),
 		"",
 		ui.Reserve(1, status),
 	)
 
-	body := lipgloss.JoinHorizontal(lipgloss.Center, left, "   ", renderPaytable())
-
-	help := ui.Help("space spin · ←/→ bet · m menu")
-	center := ui.Stage(m.width, m.height, 62, 13, body)
-	return lipgloss.JoinVertical(lipgloss.Left, header, center, help)
+	body := lipgloss.JoinHorizontal(lipgloss.Top, left, "      ", renderPaytable())
+	return ui.Screen("Slots", m.bank, m.width, m.height, body, "SPACE spin · ‹ › bet · M menu")
 }
 
 func renderCell(idx int) string {
 	s := symbols[idx]
-	glyph := lipgloss.NewStyle().Bold(true).Foreground(s.color).Render(" " + s.glyph + " ")
-	return lipgloss.NewStyle().
-		Background(ui.Ink).
-		Padding(1, 2).
-		Margin(0, 1).
-		Render(glyph)
+	return lipgloss.NewStyle().Bold(true).Foreground(s.color).
+		Width(5).Align(lipgloss.Center).Render(s.glyph)
 }
 
 func renderPaytable() string {
-	var b strings.Builder
-	b.WriteString(ui.Heading.Render("Pays (×bet)") + "\n")
+	rows := []string{ui.SectionLabel("pays", "×bet")}
 	for i := len(symbols) - 1; i >= 0; i-- {
 		s := symbols[i]
-		row := lipgloss.NewStyle().Foreground(s.color).Render(s.glyph+s.glyph+s.glyph) +
-			ui.Subtle.Render("  ×"+itoa(s.pay3))
-		b.WriteString(row + "\n")
+		triple := lipgloss.NewStyle().Bold(true).Foreground(s.color).
+			Render(s.glyph + s.glyph + s.glyph)
+		rows = append(rows, triple+ui.Subtle.Render("   ×"+itoa(s.pay3)))
 	}
-	b.WriteString(ui.Subtle.Render("CC  ×2"))
-	return ui.Panel.Render(b.String())
+	rows = append(rows, ui.Subtle.Render("CC    ×2"))
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func itoa(n int64) string {

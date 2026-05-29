@@ -2,55 +2,64 @@ package ui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 	"pit/internal/econ"
 )
 
-// Header renders the persistent top bar: game title on the left, mode and
-// balance on the right.
+// Header renders the top bar: an inverted title chip flanked by crimson blocks
+// on the left, mode and balance on the right.
 func Header(game string, b *econ.Bankroll, width int) string {
-	left := Title.Render("♠ " + game)
-	right := Subtle.Render(b.Mode().String()+"  ") +
-		lipgloss.NewStyle().Bold(true).Foreground(Gold).Render(Money(b.Balance()))
-	gap := width - lipgloss.Width(left) - lipgloss.Width(right)
+	edge := AccentText
+	chip := edge.Render("▌") + Chip.Render("PIT · "+Caps(game)) + edge.Render("▐")
+	right := Subtle.Render(Caps(b.Mode().String())+"   ") + Heading.Render(Money(b.Balance()))
+	gap := width - lipgloss.Width(chip) - lipgloss.Width(right) - 1
 	if gap < 1 {
 		gap = 1
 	}
-	bar := left + lipgloss.NewStyle().Width(gap).Render("") + right
-	return lipgloss.NewStyle().
-		Width(width).
-		BorderBottom(true).
-		Border(lipgloss.NormalBorder(), false, false, true, false).
-		BorderForeground(Border).
-		Render(bar)
+	return " " + chip + strings.Repeat(" ", gap) + right
 }
 
-// Help renders a dimmed key-hint line.
-func Help(hints string) string { return HelpBar.Render(hints) }
-
-// Stage centers a content block inside a fixed-size area (contentW x contentH),
-// wraps it in the panel, and centers that panel in the space below the header.
-// Because the inner area is a constant size, changes to the content (longer bet
-// text, a status line appearing, more cards) re-center within fixed bounds
-// instead of resizing the panel — which is what eliminates layout jitter.
-func Stage(termW, termH, contentW, contentH int, body string) string {
-	block := lipgloss.Place(contentW, contentH, lipgloss.Center, lipgloss.Center, body)
-	panel := Panel.Render(block)
-	return lipgloss.Place(maxi(termW, 1), maxi(termH-4, 1),
-		lipgloss.Center, lipgloss.Center, panel)
+// Rule draws a full-width double-line divider.
+func Rule(width int) string {
+	if width < 1 {
+		width = 1
+	}
+	return RuleStyle.Render(strings.Repeat("═", width))
 }
 
-// Reserve pads s to exactly h lines so optional content never shifts the layout.
+// Screen composes the standard layout: title bar, top rule, a fixed-height
+// content area (top-left aligned so content never re-centers or jumps), bottom
+// rule, and a help line. Top-alignment plus reserved-height regions inside the
+// body are what keep the layout stable.
+func Screen(title string, b *econ.Bankroll, width, height int, body, hints string) string {
+	header := Header(title, b, width)
+	contentH := height - 4
+	if contentH < 1 {
+		contentH = 1
+	}
+	content := lipgloss.NewStyle().Padding(1, 2).Height(contentH).Render(body)
+	return lipgloss.JoinVertical(lipgloss.Left,
+		header,
+		Rule(width),
+		content,
+		Rule(width),
+		" "+HelpBar.Render(hints),
+	)
+}
+
+// Reserve pads s to exactly h lines so optional content never shifts layout.
 func Reserve(h int, s string) string {
 	return lipgloss.NewStyle().Height(h).Render(s)
 }
 
-func maxi(a, b int) int {
-	if a > b {
-		return a
+// SectionLabel renders an uppercase section heading, optionally with a value.
+func SectionLabel(name, value string) string {
+	if value == "" {
+		return Label.Render(Caps(name))
 	}
-	return b
+	return Label.Render(Caps(name)) + "  " + Heading.Render(value)
 }
 
 // Result is the outcome of a settled wager, for the banner color.
@@ -67,11 +76,11 @@ const (
 func Banner(r Result, label string, delta int64) string {
 	switch r {
 	case ResultWin:
-		return WinText.Render(fmt.Sprintf("%s  +%s", label, Money(delta)))
+		return WinText.Render(fmt.Sprintf("%s  +%s", Caps(label), Money(delta)))
 	case ResultLose:
-		return LoseText.Render(fmt.Sprintf("%s  %s", label, Money(delta)))
+		return LoseText.Render(fmt.Sprintf("%s  %s", Caps(label), Money(delta)))
 	case ResultPush:
-		return Subtle.Bold(true).Render(label + "  push")
+		return Subtle.Bold(true).Render(Caps(label) + "  PUSH")
 	default:
 		return Heading.Render(label)
 	}
@@ -79,7 +88,16 @@ func Banner(r Result, label string, delta int64) string {
 
 // BetSelector renders the current bet with adjustment hints.
 func BetSelector(bet int64) string {
-	return Heading.Render("Bet: ") +
-		lipgloss.NewStyle().Bold(true).Foreground(Gold).Render(Money(bet)) +
-		Subtle.Render("   (←/→ adjust)")
+	return Label.Render("BET") + "  " +
+		AccentText.Render(Money(bet)) +
+		Subtle.Render("   ‹ ›")
 }
+
+func maxi(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+var _ = maxi

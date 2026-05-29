@@ -219,7 +219,7 @@ func (m *Model) spin() tea.Cmd {
 	m.result = rand.IntN(37)
 	m.phase = phaseSpin
 	m.frame = 0
-	m.stopAt = 38
+	m.stopAt = 64
 	m.outcome = ""
 	return tick(45 * time.Millisecond)
 }

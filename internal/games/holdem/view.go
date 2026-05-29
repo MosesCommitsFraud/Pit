@@ -4,29 +4,20 @@ import (
 	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
-	"pit/internal/deck"
 	"pit/internal/ui"
 )
 
 func (m *Model) View() string {
-	header := ui.Header("Texas Hold'em", m.bank, m.width)
-
-	opp := m.viewOpponents()
-	board := m.viewBoard()
-	me := m.viewHuman()
-
 	body := lipgloss.JoinVertical(lipgloss.Center,
-		ui.Reserve(6, opp),
+		ui.Reserve(5, m.viewOpponents()),
 		"",
-		ui.Reserve(4, board),
+		ui.Reserve(3, m.viewBoard()),
 		"",
-		ui.Reserve(4, me),
+		ui.Reserve(3, m.viewHuman()),
 		"",
 		ui.Reserve(2, m.viewStatus()),
 	)
-
-	center := ui.Stage(m.width, m.height, 78, 20, body)
-	return lipgloss.JoinVertical(lipgloss.Left, header, center, m.helpLine())
+	return ui.Screen("Texas Hold'em", m.bank, m.width, m.height, body, m.hints())
 }
 
 func (m *Model) viewOpponents() string {
@@ -35,20 +26,21 @@ func (m *Model) viewOpponents() string {
 	for i := 1; i < len(m.seats); i++ {
 		s := &m.seats[i]
 		var cards string
-		if s.folded {
-			cards = ui.Subtle.Render("  ╳  ╳ ")
-		} else if reveal {
+		switch {
+		case s.folded:
+			cards = ui.Subtle.Render("  —    —  ")
+		case reveal:
 			cards = ui.RenderHand(s.hole, 0)
-		} else {
+		default:
 			cards = ui.RenderHand(nil, 2)
 		}
 		name := s.name
 		if i == m.button {
-			name += " Ⓑ"
+			name += " (BTN)"
 		}
 		nameStyle := ui.Heading
 		if i == m.toAct && (m.phase == phaseBot || m.phase == phaseHuman) {
-			nameStyle = lipgloss.NewStyle().Bold(true).Foreground(ui.Gold)
+			nameStyle = ui.AccentText
 		}
 		if s.folded {
 			nameStyle = ui.Subtle
@@ -57,14 +49,14 @@ func (m *Model) viewOpponents() string {
 			ui.Subtle.Render(ui.Money(s.stack)) + "\n" +
 			actionTag(s)
 		col := lipgloss.JoinVertical(lipgloss.Center, cards, info)
-		cols = append(cols, lipgloss.NewStyle().Padding(0, 1).Render(col))
+		cols = append(cols, lipgloss.NewStyle().Padding(0, 2).Render(col))
 	}
 	return lipgloss.JoinHorizontal(lipgloss.Top, cols...)
 }
 
 func actionTag(s *seat) string {
 	if s.street > 0 && !s.folded {
-		return ui.WinText.Render(ui.Money(s.street))
+		return ui.AccentText.Render(ui.Money(s.street))
 	}
 	if s.lastAct != "" {
 		return ui.Subtle.Render(s.lastAct)
@@ -73,40 +65,40 @@ func actionTag(s *seat) string {
 }
 
 func (m *Model) viewBoard() string {
-	slots := make([]string, 0, 5)
-	for _, c := range m.board {
-		slots = append(slots, ui.RenderHand([]deck.Card{c}, 0))
+	slots := make([]string, 0, 9)
+	for i, c := range m.board {
+		if i > 0 {
+			slots = append(slots, " ")
+		}
+		slots = append(slots, ui.RenderCard(c))
 	}
-	placeholder := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).BorderForeground(ui.Border).
-		Render("     \n     \n     ")
-	for len(slots) < 5 {
-		slots = append(slots, placeholder)
+	for n := len(m.board); n < 5; n++ {
+		if n > 0 {
+			slots = append(slots, " ")
+		}
+		slots = append(slots, ui.RenderEmpty())
 	}
 	board := lipgloss.JoinHorizontal(lipgloss.Top, slots...)
-	potLine := ui.Heading.Render("Pot: ") +
-		lipgloss.NewStyle().Bold(true).Foreground(ui.Gold).Render(ui.Money(m.pot+m.tableStreet()))
-	return lipgloss.JoinVertical(lipgloss.Center, board, potLine)
+	pot := ui.Label.Render("POT") + "  " + ui.AccentText.Render(ui.Money(m.pot+m.tableStreet()))
+	return lipgloss.JoinVertical(lipgloss.Center, board, pot)
 }
 
 func (m *Model) viewHuman() string {
 	s := m.human()
-	var cards string
+	cards := ui.Subtle.Render("(waiting)")
 	if len(s.hole) > 0 {
 		cards = ui.RenderHand(s.hole, 0)
-	} else {
-		cards = ui.Subtle.Render("(waiting)")
 	}
-	name := "You"
+	name := "YOU"
 	if m.button == 0 {
-		name += " Ⓑ"
+		name += " (BTN)"
 	}
 	nameStyle := ui.Heading
 	if m.toAct == 0 && m.phase == phaseHuman {
-		nameStyle = lipgloss.NewStyle().Bold(true).Foreground(ui.Gold)
+		nameStyle = ui.AccentText
 	}
 	if s.folded {
-		name += "  (folded)"
+		name += " · folded"
 		nameStyle = ui.Subtle
 	}
 	info := nameStyle.Render(name) + "   " + ui.Subtle.Render("stack "+ui.Money(s.stack)) + "   " + actionTag(s)
@@ -116,7 +108,7 @@ func (m *Model) viewHuman() string {
 func (m *Model) viewStatus() string {
 	switch m.phase {
 	case phaseIdle:
-		msg := "Press ENTER to deal"
+		msg := "press ENTER to deal"
 		if m.result != "" {
 			msg = m.result
 		}
@@ -124,7 +116,7 @@ func (m *Model) viewStatus() string {
 	case phaseBot:
 		return ui.Subtle.Render(m.seats[m.toAct].name + " is thinking…")
 	case phaseRunout:
-		return ui.Subtle.Render("Running it out…")
+		return ui.Subtle.Render("running it out…")
 	case phaseShowdown:
 		banner := ui.Banner(ui.ResultPush, m.result, 0)
 		if m.delta > 0 {
@@ -132,7 +124,7 @@ func (m *Model) viewStatus() string {
 		} else if m.delta < 0 {
 			banner = ui.Banner(ui.ResultLose, m.result, m.delta)
 		}
-		return banner + "\n" + ui.Subtle.Render("Press ENTER for next hand")
+		return banner + "\n" + ui.Subtle.Render("ENTER for next hand")
 	case phaseHuman:
 		return m.viewActions()
 	}
@@ -145,29 +137,28 @@ func (m *Model) viewActions() string {
 	if call > 0 {
 		callLabel = fmt.Sprintf("call %s", ui.Money(call))
 	}
-	parts := ui.Heading.Render("Your turn:  ") +
-		ui.Unselected.Render("[f] fold") + "  " +
-		ui.Unselected.Render("[c] "+callLabel)
+	parts := ui.AccentText.Render("YOUR TURN") + "    " +
+		ui.Unselected.Render("[F] fold") + " " +
+		ui.Unselected.Render("[C] "+callLabel)
 	if len(m.raiseSizes) > 0 {
 		verb := "raise to"
 		if m.currentBet == 0 {
 			verb = "bet"
 		}
 		size := m.raiseSizes[m.raiseIdx]
-		raise := lipgloss.NewStyle().Bold(true).Foreground(ui.Gold).
-			Render(fmt.Sprintf("[r] %s %s", verb, ui.Money(size)))
-		parts += "  " + raise + ui.Subtle.Render("  (←/→ size)")
+		raise := ui.AccentText.Render(fmt.Sprintf("[R] %s %s", verb, ui.Money(size)))
+		parts += " " + raise + ui.Subtle.Render(" ‹ ›")
 	}
 	return parts
 }
 
-func (m *Model) helpLine() string {
+func (m *Model) hints() string {
 	switch m.phase {
 	case phaseHuman:
-		return ui.Help("f fold · c check/call · ←/→ size · r raise · m menu")
+		return "F fold · C check/call · ‹ › size · R raise · M menu"
 	case phaseIdle, phaseShowdown:
-		return ui.Help("enter deal · m menu")
+		return "ENTER deal · M menu"
 	default:
-		return ui.Help("m menu")
+		return "M menu"
 	}
 }

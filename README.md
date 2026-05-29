@@ -5,15 +5,24 @@ stack. Spin the slots, work the roulette board, beat the dealer at blackjack, or
 take three bots to showdown in Texas hold'em — all without leaving your
 terminal.
 
+A retro, high-contrast look: monochrome grayscale with a single crimson accent
+for wins and the red card suits.
+
 ```
-♠ Slots                                          Sandbox  $9,990
-────────────────────────────────────────────────────────────────
-        ┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-        ┃      ★        C        ♣      ┃        Pays (×bet)
-        ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛        777  ×75
-              ──── payline ────                  ♦♦♦  ×25
-            Bet: $10   (←/→ adjust)              ★★★  ×12
-                No win  -$10                     ...
+▌ PIT · BLACKJACK ▐                              CAREER   $2,140
+════════════════════════════════════════════════════════════════
+  DEALER  20
+  [  Q♣ ] [ 10♠ ]
+
+  YOU
+  [ 10♦ ] [  8♥ ]
+  18
+
+  BET  $50   ‹ ›
+
+  YOU WIN  +$50
+════════════════════════════════════════════════════════════════
+ H hit · S stand · D double · P split            M menu
 ```
 
 ## Games
