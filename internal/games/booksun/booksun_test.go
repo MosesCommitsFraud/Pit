@@ -21,13 +21,12 @@ func TestLinePaysThreeOfAKind(t *testing.T) {
 	mid := [reels]int{symHero, symHero, symHero, symTen, symJack}
 	g := makeGrid(fillTop, mid, fillBot)
 
-	total, lines, _ := evalLines(g, 1)
-	want := symPay(symHero, 3) // 20
-	if total != want {
-		t.Fatalf("total = %d want %d", total, want)
+	wins, _ := evalLines(g, 1)
+	if len(wins) != 1 || wins[0].line != 0 {
+		t.Fatalf("winning lines = %+v want one win on line 0", wins)
 	}
-	if len(lines) != 1 || lines[0] != 0 {
-		t.Fatalf("winning lines = %v want [0]", lines)
+	if want := symPay(symHero, 3); wins[0].pay != want { // 20
+		t.Fatalf("pay = %d want %d", wins[0].pay, want)
 	}
 }
 
@@ -35,9 +34,12 @@ func TestBookActsAsWildInLine(t *testing.T) {
 	mid := [reels]int{symHero, book, symHero, symTen, symJack}
 	g := makeGrid(fillTop, mid, fillBot)
 
-	total, _, _ := evalLines(g, 1)
-	if want := symPay(symHero, 3); total != want {
-		t.Fatalf("wild substitution: total = %d want %d", total, want)
+	wins, _ := evalLines(g, 1)
+	if len(wins) != 1 {
+		t.Fatalf("wild substitution: wins = %+v want one", wins)
+	}
+	if want := symPay(symHero, 3); wins[0].pay != want {
+		t.Fatalf("wild substitution: pay = %d want %d", wins[0].pay, want)
 	}
 }
 

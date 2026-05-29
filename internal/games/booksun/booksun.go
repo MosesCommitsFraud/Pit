@@ -127,13 +127,20 @@ type Model struct {
 	freeLeft int
 	special  int
 
-	winLines []int
+	wins     []winEntry // breakdown shown to the player
 	winCells map[[2]int]bool
+	hasWin   bool
 	expanded []int // reels the special expanded across (free spins)
 	lastWin  int64
 	msg      string
 
 	width, height int
+}
+
+// winEntry is one line of the post-spin win breakdown.
+type winEntry struct {
+	label string
+	pay   int64
 }
 
 // New builds a Book of Ra model bound to the bankroll.
@@ -198,7 +205,8 @@ func (m *Model) spin() tea.Cmd {
 	}
 	m.phase = phaseSpin
 	m.lastWin = 0
-	m.winLines = nil
+	m.wins = nil
+	m.hasWin = false
 	m.winCells = map[[2]int]bool{}
 	m.expanded = nil
 	m.msg = ""
@@ -252,29 +260,57 @@ func (m *Model) advance() tea.Cmd {
 func (m *Model) settle() tea.Cmd {
 	m.phase = phaseResult
 
-	lineWin, lines, cells := evalLines(m.result, m.lineBet())
-	m.winLines, m.winCells = lines, cells
+	lineWins, cells := evalLines(m.result, m.lineBet())
+	m.winCells = cells
+	m.wins = m.wins[:0]
 
-	books := countBooks(m.result)
-	var scatterWin int64
-	if p, ok := bookScatter[clampBooks(books)]; ok {
-		scatterWin = p * m.stake()
+	var win int64
+	for _, w := range lineWins {
+		win += w.pay
+		m.wins = append(m.wins, winEntry{
+			label: fmt.Sprintf("LINE %2d  %s ×%d", w.line+1, syms[w.sym].glyph, w.count),
+			pay:   w.pay,
+		})
 	}
 
-	win := lineWin + scatterWin
+	books := countBooks(m.result)
+	if p, ok := bookScatter[clampBooks(books)]; ok {
+		scatterWin := p * m.stake()
+		win += scatterWin
+		m.wins = append(m.wins, winEntry{
+			label: fmt.Sprintf("SCATTER %s ×%d", syms[book].glyph, books),
+			pay:   scatterWin,
+		})
+		// highlight the scattered books
+		for r := 0; r < reels; r++ {
+			for row := 0; row < rowsN; row++ {
+				if m.result[r][row] == book {
+					m.winCells[[2]int{r, row}] = true
+				}
+			}
+		}
+	}
+
 	wasFree := m.inFree
 
 	// expanding symbol pays only during free spins
 	if m.inFree {
 		expWin, expReels := evalExpand(m.result, m.special, m.lineBet())
-		win += expWin
-		m.expanded = expReels
-		for _, r := range expReels {
-			for row := 0; row < rowsN; row++ {
-				m.winCells[[2]int{r, row}] = true
+		if expWin > 0 {
+			win += expWin
+			m.expanded = expReels
+			m.wins = append(m.wins, winEntry{
+				label: fmt.Sprintf("EXPAND %s ×%d", syms[m.special].glyph, len(expReels)),
+				pay:   expWin,
+			})
+			for _, r := range expReels {
+				for row := 0; row < rowsN; row++ {
+					m.winCells[[2]int{r, row}] = true
+				}
 			}
 		}
 	}
+	m.hasWin = win > 0
 
 	var net int64
 	if wasFree {
@@ -346,11 +382,18 @@ func countBooks(g [reels][rowsN]int) int {
 	return n
 }
 
+// lineWin describes a single winning payline.
+type lineWin struct {
+	line  int // payline index
+	sym   int // symbol that paid
+	count int // matching reels from the left
+	pay   int64
+}
+
 // evalLines scores every payline left-to-right (Book is wild) and returns the
-// total win, the winning line indices, and the set of winning cells.
-func evalLines(g [reels][rowsN]int, lineBet int64) (int64, []int, map[[2]int]bool) {
-	var total int64
-	var wins []int
+// winning lines and the set of winning cells.
+func evalLines(g [reels][rowsN]int, lineBet int64) ([]lineWin, map[[2]int]bool) {
+	var wins []lineWin
 	cells := map[[2]int]bool{}
 
 	for li := 0; li < numLines; li++ {
@@ -379,14 +422,13 @@ func evalLines(g [reels][rowsN]int, lineBet int64) (int64, []int, map[[2]int]boo
 			}
 		}
 		if pay := symPay(target, run) * lineBet; pay > 0 {
-			total += pay
-			wins = append(wins, li)
+			wins = append(wins, lineWin{line: li, sym: target, count: run, pay: pay})
 			for r := 0; r < run; r++ {
 				cells[[2]int{r, line[r]}] = true
 			}
 		}
 	}
-	return total, wins, cells
+	return wins, cells
 }
 
 // evalExpand handles the free-spin expanding symbol: if the special appears on

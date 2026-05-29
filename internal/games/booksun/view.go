@@ -16,6 +16,7 @@ var (
 	bookCell = lipgloss.NewStyle().Bold(true).Foreground(ui.Accent)
 	highCell = lipgloss.NewStyle().Bold(true).Foreground(ui.Bright)
 	lowCell  = lipgloss.NewStyle().Foreground(ui.Text)
+	dimCell  = lipgloss.NewStyle().Foreground(ui.Faint) // non-winning cells when a win is showing
 )
 
 // renderCell draws one reel symbol as a fixed-width centered glyph, matching
@@ -26,6 +27,8 @@ func (m *Model) renderCell(r, row int) string {
 	switch {
 	case m.winCells[[2]int{r, row}]:
 		st = winCell
+	case m.hasWin:
+		st = dimCell // fade the rest so the winning pattern stands out
 	case idx == book || idx == symHero:
 		st = bookCell
 	case idx <= symAce:
@@ -38,7 +41,7 @@ func (m *Model) renderCell(r, row int) string {
 
 // viewMachine renders the 5x3 grid inside a double-border frame.
 func (m *Model) viewMachine() string {
-	rows := make([]string, rowsN)
+	var lines []string
 	for row := 0; row < rowsN; row++ {
 		cells := make([]string, 0, reels*2)
 		for r := 0; r < reels; r++ {
@@ -47,9 +50,12 @@ func (m *Model) viewMachine() string {
 			}
 			cells = append(cells, m.renderCell(r, row))
 		}
-		rows[row] = lipgloss.JoinHorizontal(lipgloss.Top, cells...)
+		if row > 0 {
+			lines = append(lines, "") // vertical gap between rows
+		}
+		lines = append(lines, lipgloss.JoinHorizontal(lipgloss.Top, cells...))
 	}
-	grid := lipgloss.JoinVertical(lipgloss.Left, rows...)
+	grid := lipgloss.JoinVertical(lipgloss.Left, lines...)
 	return lipgloss.NewStyle().
 		Border(lipgloss.DoubleBorder()).
 		BorderForeground(ui.Faint).
@@ -87,10 +93,29 @@ func (m *Model) View() string {
 		ui.Reserve(1, free),
 		"",
 		ui.Reserve(1, status),
+		ui.Reserve(4, m.viewWins()),
 	)
 
 	body := lipgloss.JoinHorizontal(lipgloss.Top, left, "      ", m.viewPaytable())
 	return ui.Screen("Book of Ra", m.bank, m.width, m.height, body, m.hints())
+}
+
+// viewWins lists the winning lines/features of the last spin.
+func (m *Model) viewWins() string {
+	if m.phase != phaseResult || len(m.wins) == 0 {
+		return ""
+	}
+	const maxRows = 4
+	rows := make([]string, 0, maxRows)
+	for i, w := range m.wins {
+		if i == maxRows-1 && len(m.wins) > maxRows {
+			rows = append(rows, ui.Subtle.Render(fmt.Sprintf("+%d more", len(m.wins)-i)))
+			break
+		}
+		label := lipgloss.NewStyle().Width(16).Render(ui.Subtle.Render(w.label))
+		rows = append(rows, label+ui.WinText.Render("+"+ui.Money(w.pay)))
+	}
+	return lipgloss.JoinVertical(lipgloss.Left, rows...)
 }
 
 func (m *Model) viewPaytable() string {
