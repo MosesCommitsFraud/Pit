@@ -1,0 +1,6 @@
+# compiled binary
+/pit
+# local save data (if ever placed in-repo)
+*.db
+# OS / editor cruft
+.DS_Store
